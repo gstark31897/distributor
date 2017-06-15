@@ -1,8 +1,16 @@
+use Mojolicious::Lite;
+use Mojo::IOLoop;
+use Mojo::Server::Daemon;
 use MongoDB;
 use Digest::SHA3 qw(sha3_256_hex);
-use Mojolicious::Lite;
 use Data::Dumper;
 use strict;
+
+my $port   = 2000;
+my $daemon = Mojo::Server::Daemon->new(
+    app    => app,
+    listen => ["http://*:$port"]
+);
 
 my $client = MongoDB->connect('mongodb://localhost');
 my $keyval = $client->ns('distributor.keyval');
@@ -33,16 +41,29 @@ post '/data/:key' => sub {
     $c->render( json => { hash => "$hash" } );
 };
 
-get '/meta/range' => sub {
-    my $c = shift;
+post '/meta' => sub {
+    my $c     = shift;
+    my $addr  = $c->req->env->{REMOTE_ADDR};
+    my $port  = $c->req->json->{'port'};
+    my $min   = $c->req->json->{'min'};
+    my $max   = $c->req->json->{'max'};
+    my $count = $c->req->json->{'count'};
+    my $limit = $c->req->json->{'limit'};
+
+    # TODO store these values
+    # TODO make a daemon that sends these requests out randomly
+    # TODO make the min and max actually work
     $c->render(
         json => {
+            port => $port,
             min =>
 '0000000000000000000000000000000000000000000000000000000000000000',
             max =>
-              'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+            count => 0,
+            limit => 100
         }
     );
 };
 
-app->start;
+$daemon->run;
